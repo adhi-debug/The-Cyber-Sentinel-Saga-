@@ -1,0 +1,107 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: adhi-postgres-dev
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-adhidebug}
+      POSTGRES_USER: ${POSTGRES_USER:-adhidebug}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adhiadmin}
+    ports:
+      - "${POSTGRES_HOST_PORT:-16969}:5432"
+    volumes:
+      - postgres_dev:/var/lib/postgresql/data
+    networks:
+      - adhi_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-adhidebug} -d ${POSTGRES_DB:-adhidebug}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: adhi-redis-dev
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_HOST_PORT:-26969}:6379"
+    volumes:
+      - redis_dev:/data
+    networks:
+      - adhi_dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/fastapi.dev
+    container_name: adhi-backend-dev
+    environment:
+      ENV: development
+      DEBUG: "true"
+      LOG_LEVEL: INFO
+      API_KEY: ${API_KEY:-dev-test-key}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-adhidebug}:${POSTGRES_PASSWORD:-adhiadmin}@postgres:5432/${POSTGRES_DB:-adhidebug}
+      REDIS_URL: redis://redis:6379
+      NGINX_LOG_PATH: /var/log/nginx/access.log
+      GEOIP_DB_PATH: /usr/share/GeoIP/GeoLite2-City.mmdb
+      GIT_PYTHON_REFRESH: quiet
+      MODEL_DIR: /app/data/models
+      SKIP_AUTO_TRAIN: ${SKIP_AUTO_TRAIN:-false}
+    ports:
+      - "${BACKEND_HOST_PORT:-36969}:8000"
+    volumes:
+      - model_data_dev:/app/data/models
+      - ./data/nginx:/var/log/nginx:ro
+      - ./data:/usr/share/GeoIP:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - adhi_dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 180s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/vite.dev
+    container_name: adhi-frontend-dev
+    command: sh -c "pnpm install --frozen-lockfile && pnpm dev"
+    environment:
+      CI: "true"
+      VITE_API_TARGET: http://backend:8000
+    ports:
+      - "${FRONTEND_HOST_PORT:-46969}:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules_dev:/app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - adhi_dev
+
+networks:
+  adhi_dev:
+    driver: bridge
+
+volumes:
+  postgres_dev:
+  redis_dev:
+  model_data_dev:
+  nginx_logs_dev:
+    name: adhidebug_dev_nginx_logs
+    external: true
+  frontend_node_modules_dev:

@@ -1,0 +1,100 @@
+# ©adhi-debug | 2026
+# .gitignore
+
+# dev docs
+.adhi-debugadhidebug/
+
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+ENV/
+env/
+.pnpm-store/
+.npm/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# macOS
+.DS_Store
+
+# Runtime data
+data/models/
+data/geoip/
+data/sample-logs/*.log
+!data/sample-logs/sample-access.log
+
+# MLflow
+mlruns/
+mlartifacts/
+# Node / Frontend
+node_modules/
+.pnpm-store/
+.npm/
+
+# Vite
+dist/
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+
+# Frontend env
+frontend/.env
+frontend/.env.local
+
+# Backend models
+backend/data/models/
+
+# GeoIP Database
+data/GeoLite2-City.mmdb
+
+# MLFlow
+mlflow.db
+backend/mlflow.db

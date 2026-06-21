@@ -1,0 +1,259 @@
+AI THREAT DETECTION PROJECT
+LOCAL RUN & TEST GUIDE
+
+====================================================
+
+1. START POSTGRES + REDIS
+   ====================================================
+
+From project root:
+
+cd G:\PROJECT\temp\ai-threat-detection
+
+docker compose -f dev.compose.yml up postgres redis
+
+Wait until both services show healthy.
+
+====================================================
+2. START BACKEND
+================
+
+Open Terminal 2:
+
+cd G:\PROJECT\temp\ai-threat-detection\backend
+
+activate venv
+
+..venv\Scripts\activate
+
+Start FastAPI:
+
+python -m uvicorn app.main:app --reload
+
+Expected:
+
+INFO: Uvicorn running on http://127.0.0.1:8000
+
+Verify:
+
+curl http://127.0.0.1:8000/health
+
+Expected:
+
+{
+"status":"healthy"
+}
+
+====================================================
+3. START FRONTEND
+=================
+
+Open Terminal 3:
+
+cd G:\PROJECT\temp\ai-threat-detection\frontend
+
+pnpm install
+
+pnpm dev
+
+Expected:
+
+http://localhost:5173
+
+Open browser:
+
+http://localhost:5173
+
+====================================================
+4. VERIFY BACKEND APIs
+======================
+
+Health:
+
+curl http://127.0.0.1:8000/health
+
+Stats:
+
+curl http://127.0.0.1:8000/stats?range=24h
+
+Threats:
+
+curl http://127.0.0.1:8000/threats?limit=10
+
+Models:
+
+curl http://127.0.0.1:8000/models/status
+
+====================================================
+5. GENERATE TEST TRAFFIC
+========================
+
+Open Terminal 4:
+
+cd G:\PROJECT\temp\ai-threat-detection\dev-log
+
+Normal traffic:
+
+python simulate.py normal -n 20
+
+Mixed traffic:
+
+python simulate.py mixed -n 50
+
+XSS attacks:
+
+python simulate.py xss -n 20
+
+SQL Injection:
+
+python simulate.py sqli -n 20
+
+Path Traversal:
+
+python simulate.py traversal -n 20
+
+Scanner activity:
+
+python simulate.py scanner -n 20
+
+Flood:
+
+python simulate.py flood -n 100
+
+====================================================
+6. VERIFY DETECTION PIPELINE
+============================
+
+After simulator runs:
+
+curl http://127.0.0.1:8000/stats?range=24h
+
+Threat count should increase.
+
+Then:
+
+curl http://127.0.0.1:8000/threats?limit=10
+
+Expected:
+
+* HIGH alerts
+* MEDIUM alerts
+* matched_rules
+* threat_score
+* model_version
+
+====================================================
+7. VERIFY DASHBOARD
+===================
+
+Open:
+
+http://localhost:5173
+
+Check:
+
+✓ Dashboard loads
+✓ Threat count updates
+✓ Threat table populated
+✓ Severity charts populated
+✓ Models status visible
+✓ No infinite loading spinner
+
+====================================================
+8. CURRENT KNOWN ISSUES
+=======================
+
+A. WebSocket Cleanup
+
+Error:
+
+Cannot call "receive" once a disconnect message has been received.
+
+Fix:
+
+Update app/api/websocket.py with disconnect handling.
+
+---
+
+B. Local Ingest Warning
+
+Current:
+
+WARNING: local ingest failed
+
+Cause:
+
+simulate.py tries:
+
+http://localhost:38000/ingest/batch
+
+Nothing runs on port 38000.
+
+Recommended fix:
+
+simulate.py
+
+Change:
+
+DEFAULT_INGEST_URL = "http://localhost:38000/ingest/batch"
+
+To:
+
+DEFAULT_INGEST_URL = None
+
+---
+
+C. GeoIP
+
+GeoIP database is working.
+
+Current records show:
+
+127.0.0.1
+
+which cannot be geolocated.
+
+To test GeoIP:
+
+replace localhost IPs in simulator with public IPs such as:
+
+8.8.8.8
+1.1.1.1
+104.18.32.47
+
+====================================================
+9. CLEAN RESET
+==============
+
+Stop backend/frontend.
+
+Clear nginx log:
+
+del G:\PROJECT\temp\ai-threat-detection\data\nginx\access.log
+
+Restart backend:
+
+python -m uvicorn app.main:app --reload
+
+Generate fresh traffic:
+
+python simulate.py mixed -n 20
+
+Verify:
+
+curl http://127.0.0.1:8000/stats?range=24h
+
+====================================================
+10. SUCCESS CRITERIA
+====================
+
+Backend Health = OK
+Frontend Loads = OK
+Simulator Generates Logs = OK
+Threats Stored > 0 = OK
+Threats Visible In Dashboard = OK
+WebSocket Errors Fixed = OK
+GeoIP Tested With Public IPs = OK
+
+Project Status:
+WORKING LOCALLY
